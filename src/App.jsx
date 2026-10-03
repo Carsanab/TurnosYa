@@ -17,7 +17,7 @@ export default function App() {
   const [cargandoHorarios, setCargandoHorarios] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
 
-  // 1. Cargar servicios, horarios y el número de WhatsApp desde Google Sheets
+  // 1. Cargar servicios, horarios y WhatsApp desde Google Sheets al iniciar la app
   useEffect(() => {
     const cargarConfiguracion = async () => {
       try {
@@ -36,7 +36,7 @@ export default function App() {
           setNumeroWhatsapp(data.whatsappNegocio);
         }
       } catch (error) {
-        console.error("Error al cargar configuración", error);
+        console.error("Error al cargar configuración:", error);
       } finally {
         setCargandoInicio(false);
       }
@@ -56,7 +56,7 @@ export default function App() {
         const data = await res.json();
         setOcupados(data.ocupados || []);
       } catch (error) {
-        console.error("Error al obtener turnos ocupados", error);
+        console.error("Error al obtener turnos ocupados:", error);
       } finally {
         setCargandoHorarios(false);
       }
@@ -88,12 +88,20 @@ export default function App() {
     setLoadingSubmit(true);
 
     try {
-      await fetch('/.netlify/functions/reservar', {
+      // 1. Enviar datos a Vercel Serverless Function y esperar guardado en Google Sheets
+      const res = await fetch('/api/reservar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
 
+      const data = await res.json();
+
+      if (!res.ok || data.result === "error") {
+        throw new Error(data.message || "Error al registrar reserva");
+      }
+
+      // 2. Construir mensaje formateado para WhatsApp
       const mensajeWA = `Hola! Quisiera confirmar mi turno:\n\n` +
         `👤 *Nombre:* ${formData.nombre}\n` +
         `📱 *Teléfono:* ${formData.telefono}\n` +
@@ -104,12 +112,12 @@ export default function App() {
       const destino = numeroWhatsapp ? numeroWhatsapp : "5491122334455";
       const urlWhatsApp = `https://wa.me/${destino}?text=${encodeURIComponent(mensajeWA)}`;
 
-      setLoadingSubmit(false);
+      // 3. Redirigir a WhatsApp tras guardar en Google Sheets
       window.location.href = urlWhatsApp;
 
     } catch (error) {
-      console.error("Error al registrar la reserva", error);
-      alert("Ocurrió un error al guardar tu turno. Intenta nuevamente.");
+      console.error("Error al registrar la reserva:", error);
+      alert("Ocurrió un error al guardar tu turno en la base de datos. Intenta nuevamente.");
       setLoadingSubmit(false);
     }
   };
@@ -131,7 +139,7 @@ export default function App() {
     <div className="min-h-screen bg-[#F7E49B]/30 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-[#86BCBD]/30">
         
-        {/* Banner */}
+        {/* Banner Superior */}
         <div className="bg-[#BA5A5A] p-6 text-white text-center relative">
           <Sparkles className="absolute top-4 right-4 text-[#F7E49B] w-6 h-6 animate-pulse" />
           <h1 className="text-3xl font-bold tracking-wide">TurnoYa</h1>
@@ -201,7 +209,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Horarios por servicio */}
+          {/* Selector de Horarios */}
           {formData.fecha && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -256,7 +264,7 @@ export default function App() {
             }`}
           >
             {loadingSubmit ? (
-              <span>Procesando...</span>
+              <span>Guardando reserva...</span>
             ) : (
               <>
                 <CheckCircle className="w-5 h-5" />
@@ -267,7 +275,7 @@ export default function App() {
         </form>
 
         <div className="bg-gray-50 px-6 py-3 text-center border-t text-xs text-gray-500">
-          Atención rápida • Horarios según servicio
+          Atención rápida • Horarios configurables
         </div>
       </div>
     </div>
