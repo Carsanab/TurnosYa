@@ -21,7 +21,7 @@ export default function App() {
   useEffect(() => {
     const cargarConfiguracion = async () => {
       try {
-        const res = await fetch(`/.netlify/functions/reservar`);
+        const res = await fetch(`/api/reservar`);
         const data = await res.json();
         
         if (data.serviciosConHorarios) {
@@ -52,7 +52,7 @@ export default function App() {
     const cargarHorariosOcupados = async () => {
       setCargandoHorarios(true);
       try {
-        const res = await fetch(`/.netlify/functions/reservar?fecha=${formData.fecha}`);
+        const res = await fetch(`/api/reservar?fecha=${formData.fecha}`);
         const data = await res.json();
         setOcupados(data.ocupados || []);
       } catch (error) {
